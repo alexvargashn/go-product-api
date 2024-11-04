@@ -1,3 +1,17 @@
+// Package classification of Product API
+//
+// # Documentation for Product API
+//
+// Schemes: http
+// BasePath: /
+// Version: 1.0.0
+//
+// Consumes:
+// - application/json
+//
+// Produces:
+// - application/json
+// swagger:meta
 package handlers
 
 import (
@@ -11,6 +25,25 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// A list of products
+// swagger:response productsResponse
+type productsResponseWrapper struct {
+	// All products in the system
+	// in: body
+	Body []data.Product
+}
+
+// swagger:response noContent
+type productsNoContent struct{}
+
+// swagger:parameters deleteProduct
+type productIDParametersWrapper struct {
+	// The id of the product to delete from database
+	// in: path
+	// required: true
+	ID int `json:"id"`
+}
+
 // Products is a http.Handler
 type Products struct {
 	l *log.Logger
@@ -21,7 +54,12 @@ func NewProducts(l *log.Logger) *Products {
 	return &Products{l}
 }
 
-// getProducts returns the products from the data store
+// swagger:route GET /products products listProducts
+// Returns a list of products
+// responses:
+//	200: productsResponse
+
+// GetProducts returns the products from the data store
 func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
 	p.l.Println("Handle GET Products")
 
@@ -54,6 +92,30 @@ func (p Products) UpdateProducts(rw http.ResponseWriter, r *http.Request) {
 	prod := r.Context().Value(KeyProduct{}).(data.Product)
 
 	err = data.UpdateProduct(id, &prod)
+	if err == data.ErrProductNotFound {
+		http.Error(rw, "Product not found", http.StatusNotFound)
+		return
+	}
+
+	if err != nil {
+		http.Error(rw, "Product not found", http.StatusInternalServerError)
+		return
+	}
+}
+
+// swagger:route DELETE /products/{id} products deleteProducts
+// Returns a list of products
+// responses:
+//	201: noContent
+
+// DeleteProduct deletes a product from database
+func (p *Products) DeleteProduct(rw http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+
+	p.l.Println("Handle DELETE Product", id)
+	err := data.DeleteProduct(id)
+
 	if err == data.ErrProductNotFound {
 		http.Error(rw, "Product not found", http.StatusNotFound)
 		return
